@@ -1,0 +1,5 @@
+{
+  "name": "ecommerce-platform",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "npm install"
+}
