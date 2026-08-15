@@ -8,17 +8,25 @@ export async function createProduct(formData: FormData) {
   const { user } = await requireUser(['owner'])
   const supabase = await createClient()
 
-  const imageFile = formData.get('image') as File
-  let imageUrl: string | null = null
-
-  if (imageFile && imageFile.size > 0) {
-    const fileName = `${user.id}/${Date.now()}-${imageFile.name}`
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(fileName, imageFile)
-    if (!uploadError) {
+  const imageFiles = (formData.getAll('images') as File[]).filter((f) => f.size > 0).slice(0, 4)
+  const imageUrls: string[] = []
+  for (const file of imageFiles) {
+    const fileName = `${user.id}/${Date.now()}-${file.name}`
+    const { error } = await supabase.storage.from('product-images').upload(fileName, file)
+    if (!error) {
       const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
-      imageUrl = data.publicUrl
+      imageUrls.push(data.publicUrl)
+    }
+  }
+
+  let modelUrl: string | null = null
+  const modelFile = formData.get('model3d') as File
+  if (modelFile && modelFile.size > 0) {
+    const fileName = `${user.id}/${Date.now()}-${modelFile.name}`
+    const { error } = await supabase.storage.from('product-3d').upload(fileName, modelFile)
+    if (!error) {
+      const { data } = supabase.storage.from('product-3d').getPublicUrl(fileName)
+      modelUrl = data.publicUrl
     }
   }
 
@@ -30,16 +38,47 @@ export async function createProduct(formData: FormData) {
     description_fr: formData.get('description_fr') as string,
     description_en: formData.get('description_en') as string,
     price: Number(formData.get('price')),
-    image_url: imageUrl,
+    images: imageUrls,
+    model_3d_url: modelUrl,
   })
 
-  if (error) redirect(`/owner/products/new?error=${encodeURIComponent(error.message)}`)
+  if (error) redirect(`/owner/products?error=${encodeURIComponent(error.message)}`)
   redirect('/owner/products')
 }
 
-export async function updateProduct(id: string, formData: FormData) {
-  await requireUser(['owner'])
+export async function updateProduct(formData: FormData) {
+  const { user } = await requireUser(['owner'])
   const supabase = await createClient()
+  const id = formData.get('id') as string
+
+  const { data: existing } = await supabase
+    .from('products')
+    .select('images, model_3d_url')
+    .eq('id', id)
+    .single()
+
+  const imageUrls = [...(existing?.images ?? [])]
+  const newFiles = (formData.getAll('images') as File[]).filter((f) => f.size > 0)
+  for (const file of newFiles) {
+    if (imageUrls.length >= 4) break
+    const fileName = `${user.id}/${Date.now()}-${file.name}`
+    const { error } = await supabase.storage.from('product-images').upload(fileName, file)
+    if (!error) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+      imageUrls.push(data.publicUrl)
+    }
+  }
+
+  let modelUrl = existing?.model_3d_url ?? null
+  const modelFile = formData.get('model3d') as File
+  if (modelFile && modelFile.size > 0) {
+    const fileName = `${user.id}/${Date.now()}-${modelFile.name}`
+    const { error } = await supabase.storage.from('product-3d').upload(fileName, modelFile)
+    if (!error) {
+      const { data } = supabase.storage.from('product-3d').getPublicUrl(fileName)
+      modelUrl = data.publicUrl
+    }
+  }
 
   const { error } = await supabase
     .from('products')
@@ -50,10 +89,12 @@ export async function updateProduct(id: string, formData: FormData) {
       description_fr: formData.get('description_fr') as string,
       description_en: formData.get('description_en') as string,
       price: Number(formData.get('price')),
+      images: imageUrls,
+      model_3d_url: modelUrl,
     })
     .eq('id', id)
 
-  if (error) redirect(`/owner/products/${id}/edit?error=${encodeURIComponent(error.message)}`)
+  if (error) redirect(`/owner/products?error=${encodeURIComponent(error.message)}`)
   redirect('/owner/products')
 }
 

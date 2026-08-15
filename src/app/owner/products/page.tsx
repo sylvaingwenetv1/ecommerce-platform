@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/supabase/getProfile'
 import { deleteProduct } from '@/app/actions/products'
-import Link from 'next/link'
+import { ProductFormModal } from '@/components/owner/ProductFormModal'
 
 export default async function OwnerProductsPage() {
   const { user } = await requireUser(['owner'])
@@ -11,14 +11,20 @@ export default async function OwnerProductsPage() {
     .select('*')
     .eq('owner_id', user.id)
     .order('created_at', { ascending: false })
+  const { data: categories } = await supabase.from('categories').select('*')
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="font-display font-bold text-2xl text-ink">Mes produits</h1>
-        <Link href="/owner/products/new" className="bg-primary text-white text-sm font-medium rounded-md px-4 py-2 hover:brightness-110 transition text-center">
-          + Ajouter un produit
-        </Link>
+        <ProductFormModal
+          categories={categories ?? []}
+          trigger={
+            <button className="bg-primary text-white text-sm font-medium rounded-md px-4 py-2 transition-all duration-200 hover:brightness-110 hover:shadow-lg hover:-translate-y-0.5">
+              + Ajouter un produit
+            </button>
+          }
+        />
       </div>
 
       {(!products || products.length === 0) && (
@@ -27,9 +33,12 @@ export default async function OwnerProductsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products?.map((product) => (
-          <div key={product.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            {product.image_url ? (
-              <img src={product.image_url} alt={product.title_fr} className="w-full h-40 object-cover" />
+          <div
+            key={product.id}
+            className="bg-white border border-gray-200 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+          >
+            {product.images?.[0] ? (
+              <img src={product.images[0]} alt={product.title_fr} className="w-full h-40 object-cover" />
             ) : (
               <div className="w-full h-40 bg-surface" />
             )}
@@ -37,10 +46,14 @@ export default async function OwnerProductsPage() {
               <p className="font-medium text-ink">{product.title_fr}</p>
               <p className="text-muted text-sm mt-1">{product.price} €</p>
               <div className="flex items-center gap-3 mt-3">
-                <Link href={`/owner/products/${product.id}/edit`} className="text-primary text-sm hover:underline">Modifier</Link>
+                <ProductFormModal
+                  categories={categories ?? []}
+                  product={product}
+                  trigger={<span className="text-primary text-sm hover:underline cursor-pointer transition">Modifier</span>}
+                />
                 <form action={deleteProduct}>
                   <input type="hidden" name="id" value={product.id} />
-                  <button className="text-danger text-sm hover:underline">Supprimer</button>
+                  <button className="text-danger text-sm hover:underline transition">Supprimer</button>
                 </form>
               </div>
             </div>
