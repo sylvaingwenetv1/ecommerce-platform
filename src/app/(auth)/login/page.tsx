@@ -1,5 +1,6 @@
 import { signIn } from '@/app/actions/auth'
 import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 
@@ -17,7 +18,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
       )}
 
       <Input label="E-mail" name="email" type="email" required />
-      <Input label="Mot de passe" name="password" type="password" required />
+      <PasswordInput label="Mot de passe" name="password" required />
 
       <Button type="submit">Se connecter</Button>
 
