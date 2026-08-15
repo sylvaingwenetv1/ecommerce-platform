@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireUser } from '@/lib/supabase/getProfile'
 import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
+  await requireUser()
   const supabase = await createClient()
   const { data: product } = await supabase.from('products').select('*').eq('id', params.id).single()
 
